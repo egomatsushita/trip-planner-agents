@@ -16,6 +16,26 @@ FLIGHT_RESPONSE_FORMAT = """
 - **Cabin:** [Economy / Business / First]
 - **Airline:** [FULL AIRLINE NAME: e.g. Air Transat, Air Canada, TAP Portugal]
 
----
+--- [Repeat for each additional option]
+
+### N) [Repeat for each additional option]
+"""
+
+HOTEL_RESPONSE_FORMAT = """
+### 1) [LABEL: e.g. Best Value, Most Central, Top Rated, Budget Pick]
+**Price:** [CURRENCY] [X,XXX.XX] / night · [X,XXX.XX] total ([N] nights)
+
+**Hotel**
+- **Name:** [FULL HOTEL NAME]
+- **Location:** [NEIGHBORHOOD], [CITY]
+- **Rating:** [X.X / 10] ([N,NNN reviews]) · [N-star]
+
+**Highlights**
+- [Standout amenity or feature]
+- [Standout amenity or feature]
+- [Standout amenity or feature]
+
+--- [Repeat for each additional option]
+
 ### N) [Repeat for each additional option]
 """
