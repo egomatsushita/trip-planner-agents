@@ -1,4 +1,3 @@
-import asyncio
 import logging
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
@@ -6,7 +5,7 @@ from langchain.agents import create_agent
 from langgraph.graph.state import CompiledStateGraph
 
 from config import OPENAI_MODEL, MCP_MAX_RETRIES, MCP_KIWI_URL
-from middleware.retry import calculate_backoff
+from middleware.retry import get_tools_with_retry
 from middleware.mcp_middleware import fault_tolerant_mcp_interceptor
 from prompts import FLIGHT_RESPONSE_FORMAT
 
@@ -52,19 +51,7 @@ def create_flight_finder_prompt():
 
 async def create_travel_agent(kiwi_client: MultiServerMCPClient):
     """Create the travel agent, fetching flight search tools from the MCP server with retry on failure."""
-    tools = []
-
-    for attempt in range(MCP_MAX_RETRIES):
-        try:
-            tools = await kiwi_client.get_tools()
-            logger.info(f"Fetched {len(tools)} tool(s) from Kiwi MCP server.")
-            break
-        except Exception as e:
-            logger.error(f"Failed to fetch tools from Kiwi MCP server: {e}")
-            if attempt < MCP_MAX_RETRIES - 1:
-                await asyncio.sleep(calculate_backoff(attempt))
-    else:
-        raise RuntimeError("Could not connect to flight search service. Check connectivity.")
+    tools = await get_tools_with_retry("Kiwi", kiwi_client, MCP_MAX_RETRIES, logger)
 
     travel_agent: CompiledStateGraph = create_agent(
         model=OPENAI_MODEL,
