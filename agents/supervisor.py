@@ -2,15 +2,21 @@ import asyncio
 import logging
 from typing import Dict, Literal
 
-from langchain.agents import create_agent, AgentState
+from langchain.agents import AgentState, create_agent
 from langchain.messages import HumanMessage, ToolMessage
-from langchain.tools import tool, ToolRuntime
-from langgraph.types import Command
+from langchain.tools import ToolRuntime, tool
 from langgraph.graph.state import CompiledStateGraph
+from langgraph.types import Command
 
-from config import OPENAI_MODEL, TRAVEL_AGENT_TIMEOUT, HOTEL_AGENT_TIMEOUT
+from config import (
+    HOTEL_AGENT_TIMEOUT,
+    OPENAI_MODEL,
+    PRIMARY_COLOR,
+    SECONDARY_COLOR,
+    TRAVEL_AGENT_TIMEOUT,
+)
 from prompts import FLIGHT_RESPONSE_FORMAT, HOTEL_RESPONSE_FORMAT
-from validators import check_location, check_adults, check_currency
+from validators import check_adults, check_currency, check_location
 
 logger = logging.getLogger(__name__)
 
@@ -51,9 +57,17 @@ async def search_flights(runtime: ToolRuntime) -> str:
     adults = runtime.state["adults"]
     query = f"Find flights from {origin} to {destination} in {currency} for {adults} adults."
 
+    status = runtime.config["configurable"].get("status")
+    if status:
+        status.update(f"[{SECONDARY_COLOR}]Searching for flights from {origin} to {destination}...")
+
     logger.info(f"Travel agent invoked: {origin} -> {destination} ({currency}) - {adults} Adults")
     response = await _invoke_subagent("Travel", travel_agent, query, TRAVEL_AGENT_TIMEOUT)
     logger.info("Travel agent finished.")
+
+    if status:
+        status.update(f"[{PRIMARY_COLOR}]Gathering trip details...")
+        status.console.print(f"[{SECONDARY_COLOR}]✓ Flights found")
 
     return response
 
@@ -68,9 +82,17 @@ async def search_hotels(runtime: ToolRuntime) -> str:
     city = destination.split("(")[0].strip() or destination
     query = f"Find hotels in {city} in {currency} for {adults} adults."
 
+    status = runtime.config["configurable"].get("status")
+    if status:
+        status.update(f"[{SECONDARY_COLOR}]Searching for hotels in {city}...")
+
     logger.info(f"Hotel agent invoked: {city} ({currency}) - {adults} Adults")
     response = await _invoke_subagent("Hotel", hotel_agent, query, HOTEL_AGENT_TIMEOUT)
     logger.info("Hotel agent finished.")
+
+    if status:
+        status.update(f"[{PRIMARY_COLOR}]Putting it all together...")
+        status.console.print(f"[{SECONDARY_COLOR}]✓ Hotels found")
 
     return response
 
@@ -78,6 +100,8 @@ async def search_hotels(runtime: ToolRuntime) -> str:
 @tool
 def update_state(origin: str, destination: str, currency: str, adults: int, runtime: ToolRuntime) -> str:
     """Update the state when you know all of the values: origin and destination.
+    origin and destination must follow the format 'City (XXX)' where XXX is the
+    three-letter IATA airport code, e.g. 'Toronto (YYZ)', 'Paris (CDG)'.
     This tool must be called alone, without any other tool calls.
     It must complete and return to make the information available to other tools.
     """
@@ -108,11 +132,11 @@ def update_state(origin: str, destination: str, currency: str, adults: int, runt
     })
 
 
-def create_supervisor_config(agent_config: Dict[Literal["travel_agent", "hotel_agent"], CompiledStateGraph]):
+def create_supervisor_config(agent_config: Dict[Literal["travel_agent", "hotel_agent"], CompiledStateGraph], status=None):
     """Build the LangGraph config, injecting agents into the supervisor's runtime."""
     config = {
-        "configurable": agent_config,
-        "tags": ["TP"], 
+        "configurable": {**agent_config, "status": status},
+        "tags": ["TP"],
         "recursion_limit": 20
     }
     return config
@@ -134,12 +158,7 @@ def create_supervisor_prompt():
         "Example: 'Here are the best round-trip options and hotels from Toronto (YYZ) to Paris (CDG)\n"
         "for 2 adults in September, priced in CAD.']\n"
         "\n"
-        "## Flights\n"
-        "\n"
         f"{FLIGHT_RESPONSE_FORMAT}\n"
-        "\n"
-        "## Hotels\n"
-        "\n"
         f"{HOTEL_RESPONSE_FORMAT}\n"
     )
 
