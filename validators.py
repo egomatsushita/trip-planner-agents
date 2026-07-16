@@ -1,8 +1,12 @@
 """Input validation functions shared across all agents."""
 
+import re
+
+
 ALLOWED_CURRENCIES = {"USD", "CAD", "EUR", "GBP", "JPY", "RUB", "BRL", "INR", "CNY"}
 MAX_QUERY_LENGTH = 300
 MAX_LOCATION_LENGTH = 100
+LOCATION_FORMAT = re.compile(r"^.+\s\([A-Z]{3}\)$")
 
 
 def check_query(query: str) -> str | None:
@@ -18,6 +22,8 @@ def check_location(label: str, value: str) -> str | None:
         return f"{label} must be at most {MAX_LOCATION_LENGTH} characters."
     if not value.isprintable():
         return f"{label} contains invalid characters."
+    if not LOCATION_FORMAT.match(value):
+        return f"{label} must follow the format 'City (XXX)', e.g. 'Toronto (YYZ)' - {value}"
     return None
 
 
