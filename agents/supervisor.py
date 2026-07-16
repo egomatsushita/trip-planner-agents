@@ -28,8 +28,8 @@ class TripPlannerState(AgentState):
     adults: int = 1
 
 
-async def _invoke_subagent(subagent_label: str, subagent: CompiledStateGraph, query: str, timeout: float) -> str:
-    """Invoke a subagent with a query and return its last message, handling timeouts and empty responses."""
+async def _invoke_subagent(subagent_label: str, subagent: CompiledStateGraph, query: str, timeout: float) -> dict:
+    """Invoke a subagent and return a dict with 'status' ('success' or 'error') and 'data' (message content or error string)."""
     try:
         response = await asyncio.wait_for(
             subagent.ainvoke({"messages": [HumanMessage(content=query)]}),
@@ -37,13 +37,22 @@ async def _invoke_subagent(subagent_label: str, subagent: CompiledStateGraph, qu
         )
     except asyncio.TimeoutError:
         logger.error(f"{subagent_label} search timed out after {timeout}s")
-        return f"{subagent_label} search timed out. Please try again."
+        return {
+            "status": "error",
+            "data": f"{subagent_label} search timed out. Please try again."
+        }
 
     if not response["messages"]:
         logger.error(f"{subagent_label} returned no messages.")
-        return f"{subagent_label} returned no results. Please try again"
+        return {
+            "status": "error",
+            "data": f"{subagent_label} returned no results. Please try again"
+        }
 
-    return response["messages"][-1].content
+    return {
+        "status": "success",
+        "data": response["messages"][-1].content
+    }
 
 
 
@@ -67,9 +76,10 @@ async def search_flights(runtime: ToolRuntime) -> str:
 
     if status:
         status.update(f"[{PRIMARY_COLOR}]Gathering trip details...")
-        status.console.print(f"[{SECONDARY_COLOR}]✓ Flights found")
+        if response["status"] == "success":
+            status.console.print(f"[{SECONDARY_COLOR}]✓ Flights found")
 
-    return response
+    return response["data"]
 
 
 @tool
@@ -91,10 +101,13 @@ async def search_hotels(runtime: ToolRuntime) -> str:
     logger.info("Hotel agent finished.")
 
     if status:
-        status.update(f"[{PRIMARY_COLOR}]Putting it all together...")
-        status.console.print(f"[{SECONDARY_COLOR}]✓ Hotels found")
+        if response["status"] == "success":
+            status.update(f"[{PRIMARY_COLOR}]Putting it all together...")
+            status.console.print(f"[{SECONDARY_COLOR}]✓ Hotels found")
+        else:
+            status.update(f"[{PRIMARY_COLOR}]Gathering trip details...")
 
-    return response
+    return response["data"]
 
 
 @tool
@@ -147,10 +160,32 @@ def create_supervisor_prompt():
     system_prompt = (
         "You are a trip planner supervisor.\n"
         "First find all the information you need to update the state. When you have the information, update the state.\n"
-        "If the currency has not been provided, use USD as default currency.\n"
-        "If the adults have not been provided, use 1 as default adults.\n"
         "Once that has completed and returned, you can delegate the tasks to your specialists for flights and hotels.\n"
         "Once you have received the flight and hotel results, output ONLY the formatted flight and hotel options list below.\n"
+        "\n"
+        "## Inferring adults from the query\n"
+        "Count the number of travellers mentioned, including the speaker.\n"
+        "- 'I am flying' or 'I want to go' → 1\n"
+        "- 'my partner and I', 'me and my partner', 'my husband/wife and I' → 2\n"
+        "- 'my friend and I', 'a colleague and I' → 2\n"
+        "- 'my family of 4', 'the four of us' → 4\n"
+        "- If not mentioned, default to 1.\n"
+        "\n"
+        "## Multi-city trips\n"
+        "If the user mentions more than one destination city, do not call any tools.\n"
+        "Politely explain that multi-city trips are not supported and ask them to specify a single destination.\n"
+        "\n"
+        "## Inferring city from a country name\n"
+        "If the user specifies a country instead of a city, pick the most popular tourist or gateway city\n"
+        "for that country (e.g. Italy → Rome, France → Paris, Japan → Tokyo, Brazil → São Paulo).\n"
+        "If multiple cities are equally likely, pick the most internationally connected one.\n"
+        "\n"
+        "## Inferring currency from the query\n"
+        "Use the currency explicitly stated. If the user says 'local currency', 'currency of the origin country',\n"
+        "or similar, infer from the origin city using this mapping:\n"
+        "Canada → CAD, USA → USD, UK → GBP, Eurozone → EUR, Brazil → BRL,\n"
+        "Japan → JPY, India → INR, China → CNY, Russia → RUB.\n"
+        "If the origin country is not in the list or is ambiguous, default to USD.\n"
     )
 
     response_prompt = (
