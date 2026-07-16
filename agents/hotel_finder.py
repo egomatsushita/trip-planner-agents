@@ -37,11 +37,11 @@ def create_hotel_finder_prompt():
         "- Location (proximity to city centre or main attractions)\n"
         "- Rating (guest score and star category)\n"
         "- Amenities (Wi-Fi, breakfast, cancellation policy)\n"
+        "- Link (hotel URL)\n"
         "\n"
         "You may perform multiple searches to compare options and find the best shortlist.\n"
         "If the MCP tool fails or returns unusable results, retry the tool call.\n"
         "Once you have found the best options, return your shortlist using the following format"
-        " (no booking URLs):\n"
         "\n"
         f"{HOTEL_RESPONSE_FORMAT}\n"
     )
