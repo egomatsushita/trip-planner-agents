@@ -18,7 +18,7 @@ FLIGHT_RESPONSE_FORMAT = """
 - **Cabin:** [Economy / Business / First]
 - **Airline:** [FULL AIRLINE NAME: e.g. Air Transat, Air Canada, TAP Portugal]
 
-**Link:** [BOOKING URL: e.g. https://www.kiwi.com/booking/abcd1234]
+**Link:** [View on kiwi ->](BOOKING URL: e.g. https://www.kiwi.com/booking/abcd1234)
 
 --- [Repeat for each additional option]
 
@@ -31,16 +31,14 @@ HOTEL_RESPONSE_FORMAT = """
 ### 1) [LABEL: e.g. Best Value, Most Central, Top Rated, Budget Pick]
 **Price:** [CURRENCY] [X,XXX.XX] / night · [X,XXX.XX] total ([N] nights)
 
-**Hotel**
-- **Name:** [FULL HOTEL NAME]
+- **Hotel:** [FULL HOTEL NAME]
 - **Location:** [NEIGHBORHOOD: e.g. Copacabana], [CITY: e.g. Rio de Janeiro]
 - **Rating:** [X.X / 10] ([N,NNN reviews: e.g. 1,234 reviews]) · [N-star: e.g. 3-star]
-- **Link:** [HOTEL URL: e.g. https://www.trivago.com/hotel/abcd1234]
-
-**Highlights**
-- [Standout amenity or feature]
-- [Standout amenity or feature]
-- [Standout amenity or feature]
+- **Link:** [View on trivago ->](HOTEL URL: e.g. https://www.trivago.com/hotel/abcd1234)
+- **Highlights**
+    - [Standout amenity or feature]
+    - [Standout amenity or feature]
+    - [Standout amenity or feature]
 
 --- [Repeat for each additional option]
 
