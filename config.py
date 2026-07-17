@@ -1,9 +1,15 @@
 import logging
 import os
+import warnings
 
 from dotenv import load_dotenv
 
 load_dotenv()
+
+warnings.filterwarnings(
+    "ignore",
+    message=".*Pydantic serializer warnings.*",
+)
 
 logging.basicConfig(level=os.getenv("LOGGING_LEVEL", "WARNING"))
 logging.getLogger("mcp.client.streamable_http").setLevel(logging.ERROR)
