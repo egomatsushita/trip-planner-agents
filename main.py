@@ -8,7 +8,7 @@ from rich.theme import Theme
 
 from agents.flight_finder import create_travel_agent, create_kiwi_client
 from agents.hotel_finder import create_hotel_agent, create_trivago_client
-from agents.supervisor import create_supervisor, create_supervisor_config
+from agents.supervisor import create_supervisor, create_supervisor_config, Context
 from config import SUPERVISOR_TIMEOUT, PRIMARY_COLOR, SECONDARY_COLOR
 from validators import check_query
 
@@ -47,16 +47,15 @@ async def plan_trip():
         return query_check_result
 
     supervisor = create_supervisor()
+
     try:
         with console.status("[dark_cyan]Gathering trip details...") as status:
-            supervisor_config = create_supervisor_config(
-                dict(travel_agent=travel_agent, hotel_agent=hotel_agent),
-                status=status,
-            )
+            supervisor_config = create_supervisor_config(status=status)
             response = await asyncio.wait_for(
                 supervisor.ainvoke(
                     {"messages": [HumanMessage(content=query)]},
                     config=supervisor_config,
+                    context=Context(travel_agent=travel_agent, hotel_agent=hotel_agent),
                 ),
                 timeout=SUPERVISOR_TIMEOUT,
             )
