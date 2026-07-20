@@ -3,16 +3,14 @@ import os
 import warnings
 
 from dotenv import load_dotenv
+from rich.console import Console
+from rich.logging import RichHandler
+from rich.theme import Theme
 
 load_dotenv()
 
-warnings.filterwarnings(
-    "ignore",
-    message=".*Pydantic serializer warnings.*",
-)
-
-logging.basicConfig(level=os.getenv("LOGGING_LEVEL", "WARNING"))
-logging.getLogger("mcp.client.streamable_http").setLevel(logging.ERROR)
+# Warnings
+warnings.filterwarnings("ignore", message=".*Pydantic serializer warnings.*")
 
 # Environmental Variables (Required)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -30,3 +28,18 @@ SUPERVISOR_TIMEOUT = float(os.getenv("SUPERVISOR_TIMEOUT", "300.0"))
 PRIMARY_COLOR = os.getenv("PRIMARY_COLOR", "dark_cyan")
 SECONDARY_COLOR = os.getenv("SECONDARY_COLOR", "sea_green3")
 MCP_MAX_RETRIES = 3
+
+# Rich
+console = Console(theme=Theme({
+    "markdown.h1": f"bold {PRIMARY_COLOR}",
+    "markdown.h2": f"bold {PRIMARY_COLOR}",
+    "markdown.h3": f"bold {SECONDARY_COLOR}",
+}))
+
+# Logging
+logging.basicConfig(
+    level=os.getenv("LOGGING_LEVEL", "WARNING"),
+    format="%(message)s",
+    handlers=[RichHandler(console=console, show_path=False, markup=True)],
+)
+logging.getLogger("mcp.client.streamable_http").setLevel(logging.ERROR)
