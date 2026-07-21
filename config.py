@@ -4,7 +4,6 @@ import warnings
 
 from dotenv import load_dotenv
 from rich.console import Console
-from rich.logging import RichHandler
 from rich.theme import Theme
 
 load_dotenv()
@@ -40,6 +39,5 @@ console = Console(theme=Theme({
 logging.basicConfig(
     level=os.getenv("LOGGING_LEVEL", "WARNING"),
     format="%(message)s",
-    handlers=[RichHandler(console=console, show_path=False, markup=True)],
 )
 logging.getLogger("mcp.client.streamable_http").setLevel(logging.ERROR)

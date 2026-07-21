@@ -85,6 +85,7 @@ async def plan_trip():
                 console.print("\n")
                 console.print(Markdown(last_message.content))
                 console.print("\n")
+
                 token_usage[str(turn)] = last_message.usage_metadata
                 turn += 1
 

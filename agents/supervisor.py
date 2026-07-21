@@ -1,5 +1,6 @@
 import asyncio
 from datetime import date, timedelta
+import json
 import logging
 
 from langchain.agents import create_agent
@@ -9,7 +10,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
 
-from agents.state import Context, TripDetails, TripPlannerState
+from agents.state import Context, TripDetails, TripPlannerState, HotelOption, HotelSearchResponse
 from config import (
     HOTEL_AGENT_TIMEOUT,
     OPENAI_MODEL,
@@ -48,7 +49,7 @@ async def _invoke_subagent(subagent_label: str, subagent: CompiledStateGraph, qu
 
     return {
         "status": "success",
-        "data": response["messages"][-1].content
+        "data": response.get("structured_response", response["messages"][-1].content)
     }
 
 
@@ -91,7 +92,8 @@ async def search_flights(runtime: ToolRuntime) -> Command:
 
     return Command(update={
         "finished_tools": finished_tools | {"search_flights"},
-        "messages": [ToolMessage(content=response["data"], tool_call_id=runtime.tool_call_id)]
+        "flight_options": response["data"].options,
+        "messages": [ToolMessage(content=response["data"].model_dump_json(), tool_call_id=runtime.tool_call_id)]
     })
 
 
@@ -120,6 +122,9 @@ async def search_hotels(runtime: ToolRuntime) -> Command:
     response = await _invoke_subagent("Hotel", hotel_agent, query, HOTEL_AGENT_TIMEOUT)
     logger.info("Hotel agent finished.")
 
+    hotel_options = [HotelOption(**d) for d in json.loads(response["data"])]
+    hotel_response = HotelSearchResponse(options=hotel_options)
+
     if status:
         if response["status"] == "success":
             status.console.print(f"[{SECONDARY_COLOR}]✓ Hotels found")
@@ -130,7 +135,8 @@ async def search_hotels(runtime: ToolRuntime) -> Command:
 
     return Command(update={
         "finished_tools": finished_tools | {"search_hotels"},
-        "messages": [ToolMessage(content=response["data"], tool_call_id=runtime.tool_call_id)]
+        "hotel_options": hotel_options,
+        "messages": [ToolMessage(content=hotel_response.model_dump_json(), tool_call_id=runtime.tool_call_id)]
     })
 
 
