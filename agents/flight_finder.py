@@ -4,10 +4,10 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain.agents import create_agent
 from langgraph.graph.state import CompiledStateGraph
 
+from agents.state import FlightSearchResponse
 from config import OPENAI_MODEL, MCP_MAX_RETRIES, MCP_KIWI_URL
 from middleware.retry import get_tools_with_retry
 from middleware.mcp_middleware import fault_tolerant_mcp_interceptor
-from prompts import FLIGHT_RESPONSE_FORMAT
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,7 @@ def create_flight_finder_prompt():
         "- Link (booking URL)\n"
         "- Ranking: among results, rank nonstop flights above 1-stop flights, all else being equal\n"
         "\n"
+        "RETURN — a JSON object with options - `FlighSearchResponse` schema. And each option follow `FlightOption` schema.\n"
         "RULE — Stopovers: Set the stopover filter to allow at most 1 stop in a single search call.\n"
         "This already includes any nonstop/direct options, so do not make a second call with a stricter\n"
         "(direct-only) or looser stopover filter just to compare — rank within the one result set instead.\n"
@@ -51,13 +52,19 @@ def create_flight_finder_prompt():
         "using a bolded or italicized Note, e.g. **Note:** Shifting departure to [date] saves [CURRENCY] [X] versus the preferred dates.\n"
         "Never silently replace the preferred dates — always show the preferred-dates option too.\n"
         "\n"
-        "You may need to make multiple searches to iteratively find the best options.\n"
+        "RULE — Flexible date parameters: When searching the flexible window, use only an explicit date range\n"
+        "(e.g. departureDateFrom/departureDateTo for departure, and the equivalent for return) — do not also set\n"
+        "a flex-days parameter (e.g. departureDateFlexDays). Combining an explicit date-range parameter with a\n"
+        "flex-days parameter is invalid and will be rejected by the tool.\n"
+        "\n"
+        "You may need to make up to two searches: one for the preferred dates, and one for the flexible window\n"
+        "if the request provides one — do not make additional searches beyond these for the same query.\n"
         "You will be given no extra information, only the origin, destination, and travel dates.\n"
         "It is your job to think critically about the best options.\n"
-        "If the MCP tools fails, returns malformed output, or does not give you usable flight results, try the tool again.\n"
-        "Once you have found the best options, return your shortlist using the following format:\n"
-        "\n"
-        f"{FLIGHT_RESPONSE_FORMAT}\n"
+        "If the MCP tool fails transiently (timeout, network error, malformed or empty output), try that same\n"
+        "call again. If the tool instead returns a validation or schema error, do not retry with the same\n"
+        "parameters — the request itself was invalid; correct the parameters based on the error before calling\n"
+        "the tool again.\n"
     )
 
 
@@ -69,5 +76,6 @@ async def create_travel_agent(kiwi_client: MultiServerMCPClient):
         model=OPENAI_MODEL,
         tools=tools,
         system_prompt=create_flight_finder_prompt(),
+        response_format=FlightSearchResponse,
     )
     return travel_agent

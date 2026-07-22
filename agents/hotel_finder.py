@@ -7,7 +7,6 @@ from langgraph.graph.state import CompiledStateGraph
 from config import OPENAI_MODEL, MCP_MAX_RETRIES
 from middleware.mcp_middleware import fault_tolerant_mcp_interceptor
 from middleware.retry import get_tools_with_retry
-from prompts import HOTEL_RESPONSE_FORMAT
 
 logger = logging.getLogger(__name__)
 
@@ -31,21 +30,39 @@ def create_hotel_finder_prompt():
     return (
         "You are a hotel search specialist. Find the best hotel options at the destination.\n"
         "\n"
-        "Do not ask any follow-up questions."
-        " Select hotels based on the following criteria:\n"
+        "Do not ask any follow-up questions.\n"
+        "Use the exact check-in and check-out dates given in the request to compute nightly and total price\n"
+        "Select hotels based on the following criteria:\n"
         "- Price (lowest nightly rate for the given number of guests)\n"
-        "- Use the exact check-in and check-out dates given in the request to compute nightly and total price\n"
-        "- Location (proximity to city centre or main attractions)\n"
         "- Rating (guest score and star category)\n"
+        "- Location (proximity to city centre or main attractions)\n"
         "- Amenities (Wi-Fi, breakfast, cancellation policy)\n"
-        "- Link (hotel URL)\n"
         "\n"
-        "You may perform multiple searches to compare options and find the best shortlist.\n"
-        "If the MCP tool fails or returns unusable results, retry the tool call.\n"
-        "Return at most 5 hotel options.\n"
-        "Once you have found the best options, return your shortlist using the following format"
+        "If the MCP tool fails or returns unusable results, retry the tool call once.\n"
+        "RETURN - a JSON array of hotel objects (maximum 5 options) sorted starting from cheapest.\n"
+        "The object should follow the structure below. For example:\n"
+        "{"
+        "    \"label\": \"generate a label based on your findings. e.g.: Cheapest, Best Value, Most Central, etc\","
+        "    \"location\": \"the city, or neighbour. e.g.: 'Nice, France (2.0 km to La Promenade des Anglais)' or 'Amsterdam (Van Gogh Museum area), Amsterdam'\","
+        "    \"check_in\": \"the arrival date\","
+        "    \"check_out\": \"the departure date\","
+        "    \"name\": \"the accommodation_name name\","
+        "    \"currency\": \"the country's currency\","
+        "    \"price_per_night\": \"remove currency and thousand separator, e.g: C$1,234 -> 1234, then convert to float\","
+        "    \"price_per_stay\": \"remove currency and thousand separator, e.g: C$1,234 -> 1234, then convert to float\","
+        "    \"hotel_rating\": \"convert to int\","
+        "    \"review_rating\": \"convert to float\","
+        "    \"review_count\": \"convert to int\","
+        "    \"highlights\": \"the top_amenities, convert to a list of strings\","
+        "    \"accommodation_url\": \"the accommodation url\","
+        "    \"distance\": \"the distance from a place\","
+        "    \"main_image\": \"the main image url\""
+        "}"
+        "NOTE - No markdown, no code fences, no commentary\n"
         "\n"
-        f"{HOTEL_RESPONSE_FORMAT}\n"
+        "RULE — Search calls: Make at most one search call per distinct destination/dates/guests query.\n"
+        "Do not repeat a search with the same input to double-check or refine results — reuse what the first "
+        "successful call already returned.\n"
     )
 
 async def create_hotel_agent(client: MultiServerMCPClient):
@@ -55,7 +72,7 @@ async def create_hotel_agent(client: MultiServerMCPClient):
     agent: CompiledStateGraph = create_agent(
         model=OPENAI_MODEL,
         tools=tools,
-        system_prompt=create_hotel_finder_prompt()
+        system_prompt=create_hotel_finder_prompt(),
     )
 
     return agent
