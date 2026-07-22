@@ -10,7 +10,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.types import Command
 
-from agents.state import Context, TripDetails, TripPlannerState, HotelOption, HotelSearchResponse
+from state import Context, TripDetails, TripPlannerState, HotelOption, HotelSearchResponse
 from config import (
     HOTEL_AGENT_TIMEOUT,
     OPENAI_MODEL,

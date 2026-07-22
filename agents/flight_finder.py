@@ -4,7 +4,7 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain.agents import create_agent
 from langgraph.graph.state import CompiledStateGraph
 
-from agents.state import FlightSearchResponse
+from state import FlightSearchResponse
 from config import OPENAI_MODEL, MCP_MAX_RETRIES, MCP_KIWI_URL
 from middleware.retry import get_tools_with_retry
 from middleware.mcp_middleware import fault_tolerant_mcp_interceptor

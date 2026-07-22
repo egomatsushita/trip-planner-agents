@@ -3,7 +3,7 @@ from typing import Annotated
 
 from langchain.agents import AgentState
 from langgraph.graph.state import CompiledStateGraph
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 def merge_finished_tools(current: set[str], update: set[str]) -> set[str]:
@@ -63,12 +63,12 @@ class Context:
 
 
 class TripDetails(BaseModel):
-    origin: str
-    destination: str
-    currency: str = "USD"
-    adults: int = 1
-    start_date: str
-    end_date: str
+    origin: str = Field(description="Origin city with IATA code", examples=["Toronto (YYZ)"])
+    destination: str = Field(description="Destination city with IATA code", examples=["Toronto (YYZ)"])
+    currency: str = Field(description="The currency three letters code", default="USD")
+    adults: int = Field(description="Number of adult travelers", default=1)
+    start_date: str = Field(description="ISO date", examples=["2026-09-14"])
+    end_date: str = Field(description="ISO date", examples=["2026-09-14"])
 
 
 class TripPlannerState(AgentState):
