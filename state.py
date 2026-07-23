@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Annotated
+from typing import Literal
 
 from langchain.agents import AgentState
 from langgraph.graph.state import CompiledStateGraph
@@ -66,14 +66,25 @@ class TripDetails(BaseModel):
     origin: str = Field(description="Origin city with IATA code", examples=["Toronto (YYZ)"])
     destination: str = Field(description="Destination city with IATA code", examples=["Toronto (YYZ)"])
     currency: str = Field(description="The currency three letters code", default="USD")
-    adults: int = Field(description="Number of adult travelers", default=1)
+    adults: int = Field(description="Number of adult travelers", default=1, gt=0)
     start_date: str = Field(description="ISO date", examples=["2026-09-14"])
     end_date: str = Field(description="ISO date", examples=["2026-09-14"])
+    budget: float | None = Field(description="The total budget that limits the trip", gt=0)
+    budget_tier: Literal["cheapest", "balanced", "comfortable"] = Field(
+        description=(
+            "How aggressively to spend within the budget: 'cheapest' picks the lowest-price "
+            "options regardless of comfort, 'balanced' favors the best price-to-quality tradeoff "
+            "(fewer stops, better ratings), 'comfortable' spends up to the full budget for the "
+            "best cabin and amenities. Infer from the user's wording, default to 'comfortable'."
+        ),
+        default="comfortable"
+    )
 
 
 class TripPlannerState(AgentState):
     trip_details: TripDetails
-    finished_tools: Annotated[set[str], merge_finished_tools]
     flight_options: list[FlightOption]
     hotel_options: list[HotelOption]
-
+    draft_plan: dict
+    budget_decision: dict
+    final_itinerary: str
