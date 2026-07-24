@@ -1,12 +1,42 @@
 
-from langgraph.graph import START, END, StateGraph
+from langgraph.graph import END, START, StateGraph
 
-from budget import budget_enforcer_node
-from flights import create_kiwi_client, load_kiwi_tools, create_flights_agent, make_flights_node
-from hotels import create_hotel_agent, create_trivago_client, load_trivago_tools, make_hotels_node
+from budget import budget_enforcer_node, budget_reviser_node
+from flights import (
+    create_flights_agent,
+    create_kiwi_client,
+    load_kiwi_tools,
+    make_flights_node,
+)
+from hotels import (
+    create_hotel_agent,
+    create_trivago_client,
+    load_trivago_tools,
+    make_hotels_node,
+)
 from itinerary import itinerary_writer_node
-from supervisor import trip_details_parser_node
+from router import (
+    GATHER_DETAILS,
+    GIVE_UP,
+    PROCEED,
+    REVISE,
+    RETRY_FLIGHTS,
+    RETRY_HOTELS,
+    RECHECK_BUDGET,
+    route_after_budget_enforcer,
+    route_after_budget_revision,
+    route_from_start_node,
+)
 from state import TripPlannerState
+from supervisor import trip_details_parser_node
+
+TRIP_DETAILS_PARSER = "trip_details_parser"
+FLIGHTS_AGENT = "flights_agent"
+HOTELS_AGENT = "hotels_agent"
+BUDGET_ENFORCER = "budget_enforcer"
+BUDGET_REVISER = "budget_reviser"
+ITINERARY_WRITER = "itinerary_writer"
+FEEDBACK_HANDLER = "feedback_handler"
 
 
 async def create_worker_nodes():
@@ -28,18 +58,42 @@ async def create_graph():
 
     graph = (
         StateGraph(TripPlannerState)
-        .add_node("trip_details_parser", trip_details_parser_node)
-        .add_node("flights_agent", flights_node)
-        .add_node("hotels_agent", hotels_node)
-        .add_node("budget_enforcer", budget_enforcer_node)
-        .add_node("itinerary_writer", itinerary_writer_node)
-        .add_edge(START, "trip_details_parser")
-        .add_edge("trip_details_parser", "flights_agent")
-        .add_edge("trip_details_parser", "hotels_agent")
-        .add_edge("flights_agent", "budget_enforcer")
-        .add_edge("hotels_agent", "budget_enforcer")
-        .add_edge("budget_enforcer", "itinerary_writer")
-        .add_edge("itinerary_writer", END)
+        .add_node(TRIP_DETAILS_PARSER, trip_details_parser_node)
+        .add_node(FLIGHTS_AGENT, flights_node)
+        .add_node(HOTELS_AGENT, hotels_node)
+        .add_node(BUDGET_ENFORCER, budget_enforcer_node)
+        .add_node(BUDGET_REVISER, budget_reviser_node)
+        .add_node(ITINERARY_WRITER, itinerary_writer_node)
+        .add_conditional_edges(
+            START,
+            route_from_start_node,
+            {
+                GATHER_DETAILS: TRIP_DETAILS_PARSER, 
+            }
+        )
+        .add_edge(TRIP_DETAILS_PARSER, FLIGHTS_AGENT)
+        .add_edge(TRIP_DETAILS_PARSER, HOTELS_AGENT)
+        .add_edge(FLIGHTS_AGENT, BUDGET_ENFORCER)
+        .add_edge(HOTELS_AGENT, BUDGET_ENFORCER)
+        .add_conditional_edges(
+            BUDGET_ENFORCER,
+            route_after_budget_enforcer,
+            {
+                PROCEED: ITINERARY_WRITER,
+                REVISE: BUDGET_REVISER,
+                RETRY_FLIGHTS: FLIGHTS_AGENT,
+                RETRY_HOTELS: HOTELS_AGENT,
+            }
+        )
+        .add_conditional_edges(
+            BUDGET_REVISER,
+            route_after_budget_revision,
+            {
+                GIVE_UP: ITINERARY_WRITER,
+                RECHECK_BUDGET: BUDGET_ENFORCER,
+            }
+        )
+        .add_edge(ITINERARY_WRITER, END)
         .compile()
     )
 
