@@ -1,4 +1,7 @@
 
+from langchain_core.runnables import RunnableConfig
+
+from config import PRIMARY_COLOR
 from state import TripPlannerState
 
 
@@ -6,8 +9,12 @@ def _format_stops(stops: int) -> str:
     return "Nonstop" if stops == 0 else f"{stops} stop{'s' if stops != 1 else ''}"
 
 
-def itinerary_writer_node(state: TripPlannerState):
+def itinerary_writer_node(state: TripPlannerState, config: RunnableConfig):
     """Render the trip details, selected flight and hotel, and budget summary into a markdown itinerary."""
+    status = config["configurable"].get("status")
+    if status:
+        status.update(f"[{PRIMARY_COLOR}]Writing your itinerary...")
+
     details = state["trip_details"]
     flight = state["draft_plan"]["flight"]
     hotel = state["draft_plan"]["hotel"]
@@ -63,11 +70,17 @@ def itinerary_writer_node(state: TripPlannerState):
         used_pct = (total_cost / budget) * 100
         budget_itinerary += f"- **Budget:** {currency} {budget:,.2f} ({used_pct:,.0f}% used)\n"
 
-    if not budget_decision.get("approved", True):
+    if budget_decision.get("approved", True):
+        closing = "Happy with this plan? Let me know if you'd like to adjust the dates, travelers, or budget."
+    else:
         reasons = budget_decision.get("reasons") or []
         note = " ".join(reasons)
         if note:
             budget_itinerary += f"\n**Note:** {note}\n"
+        closing = (
+            "This is the closest option I could find within your budget constraints — "
+            "want to raise your budget, or should I keep this plan as-is?"
+        )
 
     return {
         "final_itinerary": (
@@ -91,5 +104,9 @@ def itinerary_writer_node(state: TripPlannerState):
             "\n"
             "### Budget\n"
             f"{budget_itinerary}"
+            "\n"
+            "---\n"
+            "\n"
+            f"{closing}\n"
         )
     }

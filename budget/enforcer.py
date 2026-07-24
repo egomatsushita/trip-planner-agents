@@ -1,3 +1,6 @@
+from langchain_core.runnables import RunnableConfig
+
+from config import PRIMARY_COLOR, SECONDARY_COLOR
 from state import (
     BudgetBreakdown,
     BudgetDecision,
@@ -31,8 +34,12 @@ def _get_hotel_by_budget_tier(budget_tier: str, hotels: list):
     return None
 
 
-def budget_enforcer_node(state: TripPlannerState):
+def budget_enforcer_node(state: TripPlannerState, config: RunnableConfig):
     """Pick a flight and hotel option per the trip's budget tier and flag any overage against the budget."""
+    status = config["configurable"].get("status")
+    if status:
+        status.update(f"[{PRIMARY_COLOR}]Checking your budget...")
+
     trip_details = state["trip_details"]
     budget = trip_details.get("budget", float("inf"))
     budget_tier = trip_details["budget_tier"]
@@ -67,6 +74,12 @@ def budget_enforcer_node(state: TripPlannerState):
     ).model_dump()
 
     draft_plan = DraftPlan(flight=flight, hotel=hotel).model_dump()
+
+    if status:
+        if budget_decision["approved"]:
+            status.console.print(f"[{SECONDARY_COLOR}]✓ Within budget")
+        else:
+            status.console.print(f"[{SECONDARY_COLOR}]⚠ Over budget by ${over_budget_by:,.2f}")
 
     return {
         "budget_decision": budget_decision,
