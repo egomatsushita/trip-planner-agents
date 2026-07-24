@@ -7,10 +7,12 @@ def _format_stops(stops: int) -> str:
 
 
 def itinerary_writer_node(state: TripPlannerState):
-    """Render the trip details and selected flight and hotel into a markdown itinerary summary."""
+    """Render the trip details, selected flight and hotel, and budget summary into a markdown itinerary."""
     details = state["trip_details"]
     flight = state["draft_plan"]["flight"]
     hotel = state["draft_plan"]["hotel"]
+    budget_decision = state["budget_decision"]
+    currency = details.get("currency")
 
     if flight:
         flight_itinerary = (
@@ -44,6 +46,29 @@ def itinerary_writer_node(state: TripPlannerState):
     else:
         hotel_itinerary = "No hotel options available."
 
+    breakdown = budget_decision.get("breakdown") or {}
+    total_cost = budget_decision.get("total_cost", 0.0)
+    budget = details.get("budget")
+    budget_tier = details.get("budget_tier")
+
+    budget_itinerary = (
+        f"**Tier:** {budget_tier.capitalize()}\n"
+        f"**Total Cost:** {currency} {total_cost:,.2f}\n"
+        "\n"
+        f"- **Flight:** {currency} {breakdown.get('flight', 0.0):,.2f}\n"
+        f"- **Hotel:** {currency} {breakdown.get('hotel', 0.0):,.2f}\n"
+    )
+
+    if budget:
+        used_pct = (total_cost / budget) * 100
+        budget_itinerary += f"- **Budget:** {currency} {budget:,.2f} ({used_pct:,.0f}% used)\n"
+
+    if not budget_decision.get("approved", True):
+        reasons = budget_decision.get("reasons") or []
+        note = " ".join(reasons)
+        if note:
+            budget_itinerary += f"\n**Note:** {note}\n"
+
     return {
         "final_itinerary": (
             "## Your Itinerary\n"
@@ -52,10 +77,19 @@ def itinerary_writer_node(state: TripPlannerState):
             f"**Dates:** {details.get('start_date')} – {details.get('end_date')}\n"
             f"**Travelers:** {details.get('adults')}\n"
             "\n"
+            "---\n"
+            "\n"
             "### Selected Flight\n"
             f"{flight_itinerary}"
             "\n"
+            "---\n"
+            "\n"
             "### Selected Hotel\n"
             f"{hotel_itinerary}"
+            "\n"
+            "---\n"
+            "\n"
+            "### Budget\n"
+            f"{budget_itinerary}"
         )
     }
