@@ -2,7 +2,7 @@
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 
-from budget import budget_enforcer_node, budget_reviser_node
+from budget import budget_evaluator_node, budget_tier_downgrader_node
 from flights import (
     create_flights_agent,
     create_kiwi_client,
@@ -22,12 +22,12 @@ from router import (
     GIVE_UP,
     HANDLE_FEEDBACK,
     PROCEED,
-    REVISE_BUDGET,
+    DOWNGRADE_BUDGET_TIER,
     RETRY_FLIGHTS,
     RETRY_HOTELS,
     RECHECK_BUDGET,
-    route_after_budget_enforcer,
-    route_after_budget_revision,
+    route_after_budget_evaluation,
+    route_after_budget_tier_downgrade,
     route_after_feedback,
     route_from_start_node,
 )
@@ -37,23 +37,11 @@ from supervisor import advisor_node, feedback_handler_node, trip_details_parser_
 TRIP_DETAILS_PARSER = "trip_details_parser"
 FLIGHTS_AGENT = "flights_agent"
 HOTELS_AGENT = "hotels_agent"
-BUDGET_ENFORCER = "budget_enforcer"
-BUDGET_REVISER = "budget_reviser"
+BUDGET_EVALUATOR = "budget_evaluator"
+BUDGET_TIER_DOWNGRADER = "budget_tier_downgrader"
 ITINERARY_WRITER = "itinerary_writer"
 FEEDBACK_HANDLER = "feedback_handler"
 ADVISOR = "advisor"
-
-path_to_node = {
-    GATHER_DETAILS: TRIP_DETAILS_PARSER, 
-    GIVE_ADVICE: ADVISOR,
-    GIVE_UP: ITINERARY_WRITER,
-    HANDLE_FEEDBACK: FEEDBACK_HANDLER,
-    PROCEED: ITINERARY_WRITER,
-    RECHECK_BUDGET: BUDGET_ENFORCER,
-    RETRY_FLIGHTS: FLIGHTS_AGENT,
-    RETRY_HOTELS: HOTELS_AGENT,
-    REVISE_BUDGET: BUDGET_REVISER,
-}
 
 
 async def create_worker_nodes():
@@ -79,34 +67,51 @@ async def create_graph():
         .add_node(TRIP_DETAILS_PARSER, trip_details_parser_node)
         .add_node(FLIGHTS_AGENT, flights_node)
         .add_node(HOTELS_AGENT, hotels_node)
-        .add_node(BUDGET_ENFORCER, budget_enforcer_node)
-        .add_node(BUDGET_REVISER, budget_reviser_node)
+        .add_node(BUDGET_EVALUATOR, budget_evaluator_node)
+        .add_node(BUDGET_TIER_DOWNGRADER, budget_tier_downgrader_node)
         .add_node(ITINERARY_WRITER, itinerary_writer_node)
         .add_node(FEEDBACK_HANDLER, feedback_handler_node)
         .add_node(ADVISOR, advisor_node)
         .add_conditional_edges(
             START,
             route_from_start_node,
-            {k: path_to_node[k] for k in (GATHER_DETAILS, HANDLE_FEEDBACK)}
+            {
+                GATHER_DETAILS: TRIP_DETAILS_PARSER, 
+                HANDLE_FEEDBACK: FEEDBACK_HANDLER,
+            }
         )
         .add_edge(TRIP_DETAILS_PARSER, FLIGHTS_AGENT)
         .add_edge(TRIP_DETAILS_PARSER, HOTELS_AGENT)
         .add_conditional_edges(
             FEEDBACK_HANDLER,
             route_after_feedback,
-            {k: path_to_node[k] for k in (RETRY_FLIGHTS, RETRY_HOTELS, RECHECK_BUDGET, GIVE_ADVICE, PROCEED)}
+            {
+                GIVE_ADVICE: ADVISOR,
+                PROCEED: ITINERARY_WRITER,
+                RECHECK_BUDGET: BUDGET_EVALUATOR,
+                RETRY_FLIGHTS: FLIGHTS_AGENT,
+                RETRY_HOTELS: HOTELS_AGENT,
+            }
         )
-        .add_edge(FLIGHTS_AGENT, BUDGET_ENFORCER)
-        .add_edge(HOTELS_AGENT, BUDGET_ENFORCER)
+        .add_edge(FLIGHTS_AGENT, BUDGET_EVALUATOR)
+        .add_edge(HOTELS_AGENT, BUDGET_EVALUATOR)
         .add_conditional_edges(
-            BUDGET_ENFORCER,
-            route_after_budget_enforcer,
-            {k: path_to_node[k] for k in (PROCEED, REVISE_BUDGET, RETRY_FLIGHTS, RETRY_HOTELS)}
+            BUDGET_EVALUATOR,
+            route_after_budget_evaluation,
+            {
+                PROCEED: ITINERARY_WRITER,
+                RETRY_FLIGHTS: FLIGHTS_AGENT,
+                RETRY_HOTELS: HOTELS_AGENT,
+                DOWNGRADE_BUDGET_TIER: BUDGET_TIER_DOWNGRADER,
+            }
         )
         .add_conditional_edges(
-            BUDGET_REVISER,
-            route_after_budget_revision,
-            {k: path_to_node[k] for k in (GIVE_UP, RECHECK_BUDGET)}
+            BUDGET_TIER_DOWNGRADER,
+            route_after_budget_tier_downgrade,
+            {
+                GIVE_UP: ITINERARY_WRITER,
+                RECHECK_BUDGET: BUDGET_EVALUATOR,
+            }
         )
         .add_edge(ITINERARY_WRITER, END)
         .add_edge(ADVISOR, END)

@@ -137,13 +137,13 @@ class BudgetDecision(BaseModel):
 class RetryAttempts(BaseModel):
     flight_search: int = Field(description="Number of times the flight search has been retried", default=0, le=MAX_RETRY)
     hotel_search: int = Field(description="Number of times the hotel search has been retried", default=0, le=MAX_RETRY)
-    revision: int = Field(description="Number of times the budget-driven plan revision has been retried", default=0, le=MAX_RETRY)
+    budget_tier_downgrade: int = Field(description="Number of times the budget tier has been downgraded", default=0, le=MAX_RETRY)
 
 
 class RetryAttemptsDict(TypedDict):
     flight_search: int
     hotel_search: int
-    revision: int
+    budget_tier_downgrade: int
 
 
 class TripPlannerState(AgentState):

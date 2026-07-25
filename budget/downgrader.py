@@ -9,15 +9,15 @@ budget_tier_to_attempt = {
     BudgetTier.CHEAPEST: MAX_RETRY,
 }
 
-def budget_reviser_node(state: TripPlannerState, config: RunnableConfig):
-    """Step the trip down to a cheaper budget tier when over budget, tracking the revision attempt count."""
+def budget_tier_downgrader_node(state: TripPlannerState, config: RunnableConfig):
+    """Step the trip down to a cheaper budget tier when over budget, tracking the downgrade attempt count."""
     status = config["configurable"].get("status")
     if status:
         status.update(f"[{PRIMARY_COLOR}]Adjusting your plan to fit your budget...")
 
     trip_details = state["trip_details"]
     budget_tier = trip_details["budget_tier"]
-    new_retry_attempts = {"revision": budget_tier_to_attempt[budget_tier]}
+    new_retry_attempts = {"budget_tier_downgrade": budget_tier_to_attempt[budget_tier]}
 
     if budget_tier == BudgetTier.CHEAPEST:
         if status:

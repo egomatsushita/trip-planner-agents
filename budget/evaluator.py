@@ -34,7 +34,7 @@ def _get_hotel_by_budget_tier(budget_tier: str, hotels: list):
     return None
 
 
-def budget_enforcer_node(state: TripPlannerState, config: RunnableConfig):
+def budget_evaluator_node(state: TripPlannerState, config: RunnableConfig):
     """Pick a flight and hotel option per the trip's budget tier and flag any overage against the budget."""
     status = config["configurable"].get("status")
     if status:
