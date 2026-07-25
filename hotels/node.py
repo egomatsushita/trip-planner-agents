@@ -12,7 +12,7 @@ def make_hotels_node(hotels_agent: CompiledStateGraph):
     async def hotels_node(state: TripPlannerState, config: RunnableConfig) -> dict:
         status = config["configurable"].get("status")
         retry_attempts = state["retry_attempts"]
-        new_retry_attempts = {"hotel_search": retry_attempts["hotel_search"] + 1,}
+        new_retry_attempts = {"hotel_search": retry_attempts["hotel_search"] + 1}
 
         if status:
             status.update(f"[{PRIMARY_COLOR}]Searching for flights and hotels...")

@@ -20,6 +20,25 @@ def merge_retry_attempts(current: dict, update: dict) -> dict:
     return {**current, **update}
 
 
+class Intent(str, Enum):
+    NEW_SEARCH = "new_search"
+    BUDGET_ADJUSTMENT = "budget_adjustment"
+    ADVISORY_QUESTION = "advisory_question"
+    FINALIZE = "finalize"
+
+
+class ClassifiedIntent(BaseModel):
+    intent: Intent = Field(
+        description=(
+            f"{Intent.NEW_SEARCH.value}: user wants different flights/hotels/dates. "
+            f"{Intent.BUDGET_ADJUSTMENT.value}: user wants a cheaper option. "
+            f"{Intent.ADVISORY_QUESTION.value}: open-ended question about the destination "
+            "(e.g. 'is it walkable'). "
+            f"{Intent.FINALIZE.value}: user is happy, produce the final itinerary."
+        )
+    )
+
+
 class FlightOption(BaseModel):
     """A single flight option in the shortlist."""
     label: str
@@ -90,9 +109,9 @@ class TripDetails(BaseModel):
             "How aggressively to spend within the budget: 'cheapest' picks the lowest-price "
             "options regardless of comfort, 'balanced' favors the best price-to-quality tradeoff "
             "(fewer stops, better ratings), 'comfortable' spends up to the full budget for the "
-            f"best cabin and amenities. Infer from the user's wording, default to '{BudgetTier.COMFORTABLE}'."
+            f"best cabin and amenities. Infer from the user's wording, default to '{BudgetTier.COMFORTABLE.value}'."
         ),
-        default=BudgetTier.COMFORTABLE
+        default=BudgetTier.COMFORTABLE.value
     )
 
 
@@ -135,3 +154,19 @@ class TripPlannerState(AgentState):
     budget_decision: BudgetDecision
     retry_attempts: Annotated[RetryAttemptsDict, merge_retry_attempts]
     final_itinerary: str
+    feedback_intent: Intent | None
+
+
+def initialize_retry_attempts():
+    return RetryAttempts().model_dump()
+
+def initialize_trip_planner_states():
+    return {
+        "flight_options": [],
+        "hotel_options": [],
+        "draft_plan": {},
+        "budget_decision": {},
+        "retry_attempts": initialize_retry_attempts(),
+        "final_itinerary": "",
+        "feedback_intent": None,
+    }

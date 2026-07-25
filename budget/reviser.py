@@ -32,5 +32,5 @@ def budget_reviser_node(state: TripPlannerState, config: RunnableConfig):
     if status:
         status.console.print(f"[{SECONDARY_COLOR}]→ Trying {new_budget_tier.value} tier")
 
-    new_trip_details = {**trip_details, "budget_tier": new_budget_tier}
+    new_trip_details = {**trip_details, "budget_tier": new_budget_tier.value}
     return {"trip_details": new_trip_details, "retry_attempts": new_retry_attempts}

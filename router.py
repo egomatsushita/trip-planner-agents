@@ -1,10 +1,11 @@
-from state import TripPlannerState, MAX_RETRY
+from state import TripPlannerState, MAX_RETRY, Intent
 
 GATHER_DETAILS = "gather_details"
 HANDLE_FEEDBACK = "handle_feedback"
 PROCEED = "proceed"
-REVISE = "revise"
+REVISE_BUDGET = "revise_budget"
 GIVE_UP = "give_up"
+GIVE_ADVICE = "give_advice"
 RECHECK_BUDGET = "recheck_budget"
 RETRY_FLIGHTS = "retry_flights"
 RETRY_HOTELS = "retry_hotels"
@@ -30,7 +31,7 @@ def route_after_budget_enforcer(state: TripPlannerState):
         return RETRY_FLIGHTS
     if not hotel_options and retry_attempts["hotel_search"] < MAX_RETRY:
         return RETRY_HOTELS
-    return REVISE
+    return REVISE_BUDGET
 
 
 def route_after_budget_revision(state: TripPlannerState):
@@ -39,3 +40,17 @@ def route_after_budget_revision(state: TripPlannerState):
     if state["retry_attempts"]["revision"] == MAX_RETRY:
         return GIVE_UP
     return RECHECK_BUDGET
+
+
+def route_after_feedback(state: TripPlannerState):
+    """Route based on the classified feedback intent: re-search, recheck budget, answer a question, or finalize."""
+    intent = state["feedback_intent"]
+    
+    if intent == Intent.NEW_SEARCH:
+        return [RETRY_FLIGHTS, RETRY_HOTELS]
+    if intent == Intent.BUDGET_ADJUSTMENT:
+        return RECHECK_BUDGET
+    if intent == Intent.ADVISORY_QUESTION:
+        return GIVE_ADVICE
+    if intent == Intent.FINALIZE:
+        return PROCEED
