@@ -22,6 +22,7 @@ from router import (
     GIVE_UP,
     HANDLE_FEEDBACK,
     PROCEED,
+    REQUEST_DETAILS,
     DOWNGRADE_BUDGET_TIER,
     RETRY_FLIGHTS,
     RETRY_HOTELS,
@@ -29,10 +30,11 @@ from router import (
     route_after_budget_evaluation,
     route_after_budget_tier_downgrade,
     route_after_feedback,
+    route_after_trip_details_parsing,
     route_from_start_node,
 )
 from state import TripPlannerState
-from supervisor import advisor_node, feedback_handler_node, trip_details_parser_node
+from supervisor import advisor_node, feedback_handler_node, trip_details_parser_node, requester_node
 
 TRIP_DETAILS_PARSER = "trip_details_parser"
 FLIGHTS_AGENT = "flights_agent"
@@ -42,6 +44,7 @@ BUDGET_TIER_DOWNGRADER = "budget_tier_downgrader"
 ITINERARY_WRITER = "itinerary_writer"
 FEEDBACK_HANDLER = "feedback_handler"
 ADVISOR = "advisor"
+REQUESTER = "requester"
 
 
 async def create_worker_nodes():
@@ -72,6 +75,7 @@ async def create_graph():
         .add_node(ITINERARY_WRITER, itinerary_writer_node)
         .add_node(FEEDBACK_HANDLER, feedback_handler_node)
         .add_node(ADVISOR, advisor_node)
+        .add_node(REQUESTER, requester_node)
         .add_conditional_edges(
             START,
             route_from_start_node,
@@ -80,8 +84,15 @@ async def create_graph():
                 HANDLE_FEEDBACK: FEEDBACK_HANDLER,
             }
         )
-        .add_edge(TRIP_DETAILS_PARSER, FLIGHTS_AGENT)
-        .add_edge(TRIP_DETAILS_PARSER, HOTELS_AGENT)
+        .add_conditional_edges(
+            TRIP_DETAILS_PARSER,
+            route_after_trip_details_parsing,
+            {
+                REQUEST_DETAILS: REQUESTER,
+                RETRY_FLIGHTS: FLIGHTS_AGENT,
+                RETRY_HOTELS: HOTELS_AGENT,
+            }
+        )
         .add_conditional_edges(
             FEEDBACK_HANDLER,
             route_after_feedback,
@@ -91,6 +102,7 @@ async def create_graph():
                 RECHECK_BUDGET: BUDGET_EVALUATOR,
                 RETRY_FLIGHTS: FLIGHTS_AGENT,
                 RETRY_HOTELS: HOTELS_AGENT,
+                REQUEST_DETAILS: REQUESTER,
             }
         )
         .add_edge(FLIGHTS_AGENT, BUDGET_EVALUATOR)
@@ -115,6 +127,7 @@ async def create_graph():
         )
         .add_edge(ITINERARY_WRITER, END)
         .add_edge(ADVISOR, END)
+        .add_edge(REQUESTER, END)
         .compile(checkpointer=memory)
     )
 

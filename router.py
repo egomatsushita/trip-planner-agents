@@ -1,5 +1,6 @@
 from state import TripPlannerState, MAX_RETRY, Intent
 
+REQUEST_DETAILS = "request_details"
 GATHER_DETAILS = "gather_details"
 HANDLE_FEEDBACK = "handle_feedback"
 PROCEED = "proceed"
@@ -43,9 +44,13 @@ def route_after_budget_tier_downgrade(state: TripPlannerState):
 
 
 def route_after_feedback(state: TripPlannerState):
-    """Route based on the classified feedback intent: re-search, recheck budget, answer a question, or finalize."""
+    """Ask for corrected details if the merged trip details are invalid, otherwise route based on the
+    classified feedback intent: re-search, recheck budget, answer a question, or finalize."""
+    validation = state.get("trip_details_validation")
     intent = state["feedback_intent"]
-    
+
+    if validation and validation["status"] == "invalid":
+        return REQUEST_DETAILS
     if intent == Intent.NEW_SEARCH:
         return [RETRY_FLIGHTS, RETRY_HOTELS]
     if intent == Intent.BUDGET_ADJUSTMENT:
@@ -54,3 +59,11 @@ def route_after_feedback(state: TripPlannerState):
         return GIVE_ADVICE
     if intent == Intent.FINALIZE:
         return PROCEED
+
+
+def route_after_trip_details_parsing(state: TripPlannerState):
+    """Ask for corrected details if the parsed trip details are invalid, otherwise proceed to search."""
+    validation = state.get("trip_details_validation")
+    if validation and validation["status"] == "invalid":
+        return REQUEST_DETAILS
+    return [RETRY_FLIGHTS, RETRY_HOTELS]
