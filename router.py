@@ -1,4 +1,11 @@
-from state import TripPlannerState, MAX_RETRY, Intent
+from state import (
+    TripPlannerState,
+    MAX_RETRY,
+    INTENT_NEW_SEARCH,
+    INTENT_BUDGET_ADJUSTMENT,
+    INTENT_ADVISORY_QUESTION,
+    INTENT_FINALIZE,
+)
 
 REQUEST_DETAILS = "request_details"
 GATHER_DETAILS = "gather_details"
@@ -51,13 +58,13 @@ def route_after_feedback(state: TripPlannerState):
 
     if validation and validation["status"] == "invalid":
         return REQUEST_DETAILS
-    if intent == Intent.NEW_SEARCH:
+    if intent == INTENT_NEW_SEARCH:
         return [RETRY_FLIGHTS, RETRY_HOTELS]
-    if intent == Intent.BUDGET_ADJUSTMENT:
+    if intent == INTENT_BUDGET_ADJUSTMENT:
         return RECHECK_BUDGET
-    if intent == Intent.ADVISORY_QUESTION:
+    if intent == INTENT_ADVISORY_QUESTION:
         return GIVE_ADVICE
-    if intent == Intent.FINALIZE:
+    if intent == INTENT_FINALIZE:
         return PROCEED
 
 

@@ -3,8 +3,15 @@ from langchain_core.runnables import RunnableConfig
 from langchain.chat_models import init_chat_model
 
 from config import OPENAI_MODEL, PRIMARY_COLOR
-from state import BudgetTier, ClassifiedIntent, TripPlannerState, Intent, initialize_retry_attempts
-from supervisor import get_trip_details
+from state import (
+    BUDGET_TIER_COMFORTABLE,
+    ClassifiedIntent,
+    TripPlannerState,
+    INTENT_NEW_SEARCH,
+    INTENT_BUDGET_ADJUSTMENT,
+    initialize_retry_attempts,
+)
+from supervisor.trip_details_parser import get_trip_details
 from validators import validate_trip_details, OFF_TOPIC_MESSAGE
 
 
@@ -21,12 +28,12 @@ async def feedback_handler_node(state: TripPlannerState, config: RunnableConfig)
     classified = await intent_classifier.ainvoke(
         f"Classify what this follow-up trip-planning message wants:\n\n{last_message}"
     )
-    intent = classified.intent.value
+    intent = classified.intent
 
     result = {"feedback_intent": intent, "trip_details_validation": None}
 
-    if intent in {Intent.NEW_SEARCH, Intent.BUDGET_ADJUSTMENT}:
-        current_trip_details = {**state['trip_details'], "budget_tier": BudgetTier.COMFORTABLE.value}
+    if intent in {INTENT_NEW_SEARCH, INTENT_BUDGET_ADJUSTMENT}:
+        current_trip_details = {**state['trip_details'], "budget_tier": BUDGET_TIER_COMFORTABLE}
         updated_trip_details = await get_trip_details(
             f"Current trip details:\n{current_trip_details}\n\n"
             f"Update them based on this follow-up message, keeping any field not mentioned unchanged:\n\n{last_message}"

@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from enum import Enum
 from typing import Annotated, TypedDict, Literal
 
 from langchain.agents import AgentState
@@ -20,21 +19,22 @@ def merge_retry_attempts(current: dict, update: dict) -> dict:
     return {**current, **update}
 
 
-class Intent(str, Enum):
-    NEW_SEARCH = "new_search"
-    BUDGET_ADJUSTMENT = "budget_adjustment"
-    ADVISORY_QUESTION = "advisory_question"
-    FINALIZE = "finalize"
+INTENT_NEW_SEARCH = "new_search"
+INTENT_BUDGET_ADJUSTMENT = "budget_adjustment"
+INTENT_ADVISORY_QUESTION = "advisory_question"
+INTENT_FINALIZE = "finalize"
+
+Intent = Literal["new_search", "budget_adjustment", "advisory_question", "finalize"]
 
 
 class ClassifiedIntent(BaseModel):
     intent: Intent = Field(
         description=(
-            f"{Intent.NEW_SEARCH.value}: user wants different flights/hotels/dates. "
-            f"{Intent.BUDGET_ADJUSTMENT.value}: user wants a cheaper option. "
-            f"{Intent.ADVISORY_QUESTION.value}: open-ended question about the destination "
+            f"{INTENT_NEW_SEARCH}: user wants different flights/hotels/dates. "
+            f"{INTENT_BUDGET_ADJUSTMENT}: user wants a cheaper option. "
+            f"{INTENT_ADVISORY_QUESTION}: open-ended question about the destination "
             "(e.g. 'is it walkable'). "
-            f"{Intent.FINALIZE.value}: user is happy, produce the final itinerary."
+            f"{INTENT_FINALIZE}: user is happy, produce the final itinerary."
         )
     )
 
@@ -90,10 +90,11 @@ class Context:
     hotel_agent: CompiledStateGraph
 
 
-class BudgetTier(str, Enum):
-    CHEAPEST = "cheapest"
-    BALANCED = "balanced"
-    COMFORTABLE = "comfortable"
+BUDGET_TIER_CHEAPEST = "cheapest"
+BUDGET_TIER_BALANCED = "balanced"
+BUDGET_TIER_COMFORTABLE = "comfortable"
+
+BudgetTier = Literal["cheapest", "balanced", "comfortable"]
 
 
 class TripDetails(BaseModel):
@@ -109,9 +110,9 @@ class TripDetails(BaseModel):
             "How aggressively to spend within the budget: 'cheapest' picks the lowest-price "
             "options regardless of comfort, 'balanced' favors the best price-to-quality tradeoff "
             "(fewer stops, better ratings), 'comfortable' spends up to the full budget for the "
-            f"best cabin and amenities. Infer from the user's wording, default to '{BudgetTier.COMFORTABLE.value}'."
+            f"best cabin and amenities. Infer from the user's wording, default to '{BUDGET_TIER_COMFORTABLE}'."
         ),
-        default=BudgetTier.COMFORTABLE.value
+        default=BUDGET_TIER_COMFORTABLE
     )
 
 
