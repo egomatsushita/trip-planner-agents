@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Annotated, TypedDict
+from typing import Annotated, TypedDict, Literal
 
 from langchain.agents import AgentState
 from langgraph.graph.state import CompiledStateGraph
@@ -97,8 +97,8 @@ class BudgetTier(str, Enum):
 
 
 class TripDetails(BaseModel):
-    origin: str = Field(description="Origin city with IATA code", examples=["Toronto (YYZ)"])
-    destination: str = Field(description="Destination city with IATA code", examples=["Toronto (YYZ)"])
+    origin: str = Field(description="Origin city", examples=["Toronto"])
+    destination: str = Field(description="Destination city", examples=["Tokyo"])
     currency: str = Field(description="The currency three letters code", default="USD")
     adults: int = Field(description="Number of adult travelers", default=1, gt=0)
     start_date: str = Field(description="ISO date", examples=["2026-09-14"])
@@ -146,8 +146,14 @@ class RetryAttemptsDict(TypedDict):
     budget_tier_downgrade: int
 
 
+class TripDetailsValidation(TypedDict):
+    status: Literal["valid", "invalid"]
+    reasons: list[str]
+
+
 class TripPlannerState(AgentState):
     trip_details: TripDetails
+    trip_details_validation: TripDetailsValidation | None
     flight_options: list[FlightOption]
     hotel_options: list[HotelOption]
     draft_plan: DraftPlan
@@ -155,6 +161,11 @@ class TripPlannerState(AgentState):
     retry_attempts: Annotated[RetryAttemptsDict, merge_retry_attempts]
     final_itinerary: str
     feedback_intent: Intent | None
+
+
+class TripRequest(BaseModel):
+    is_travel_related: bool = Field(description="False if the message isn't a travel-planning request")
+    trip_details: TripDetails | None = Field(description="Only populate if is_travel_related is True")
 
 
 def initialize_retry_attempts():
