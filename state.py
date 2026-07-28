@@ -1,17 +1,10 @@
-from dataclasses import dataclass
 from typing import Annotated, TypedDict, Literal, Optional
 
 from langchain.agents import AgentState
-from langgraph.graph.state import CompiledStateGraph
 from pydantic import BaseModel, Field
 
 
 MAX_RETRY = 2
-
-
-def merge_finished_tools(current: set[str], update: set[str]) -> set[str]:
-    """Merge concurrent tool completions within the same step"""
-    return current | update
 
 
 def merge_retry_attempts(current: dict, update: dict) -> dict:
@@ -82,12 +75,6 @@ class HotelOption(BaseModel):
 class HotelSearchResponse(BaseModel):
     """Structured shortlist of hotel optons found for the requested trip."""
     options: list[HotelOption]
-
-
-@dataclass
-class Context:
-    travel_agent: CompiledStateGraph
-    hotel_agent: CompiledStateGraph
 
 
 BUDGET_TIER_CHEAPEST = "cheapest"
