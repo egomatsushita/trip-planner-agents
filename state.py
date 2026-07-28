@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Annotated, TypedDict, Literal
+from typing import Annotated, TypedDict, Literal, Optional
 
 from langchain.agents import AgentState
 from langgraph.graph.state import CompiledStateGraph
@@ -62,8 +62,8 @@ class FlightSearchResponse(BaseModel):
 
 class HotelOption(BaseModel):
     """A single hotel option in the shortlist."""
-    label: str
-    location: str
+    label: Optional[str] = None
+    location: Optional[str] = None
     check_in: str
     check_out: str
     name: str

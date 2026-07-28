@@ -43,7 +43,7 @@ def budget_evaluator_node(state: TripPlannerState, config: RunnableConfig):
         status.update(f"[{PRIMARY_COLOR}]Checking your budget...")
 
     trip_details = state["trip_details"]
-    budget = trip_details.get("budget", float("inf"))
+    budget = trip_details["budget"] or float("inf")
     budget_tier = trip_details["budget_tier"]
     flights = state.get("flight_options", [])
     hotels = state.get("hotel_options", [])
