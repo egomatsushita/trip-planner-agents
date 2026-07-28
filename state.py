@@ -6,7 +6,7 @@ from langgraph.graph.state import CompiledStateGraph
 from pydantic import BaseModel, Field
 
 
-MAX_RETRY = 3
+MAX_RETRY = 2
 
 
 def merge_finished_tools(current: set[str], update: set[str]) -> set[str]:

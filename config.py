@@ -23,7 +23,6 @@ for name, value in [("OPENAI_API_KEY", OPENAI_API_KEY), ("OPENAI_MODEL", OPENAI_
 # Environmental Variables (Optional)
 TRAVEL_AGENT_TIMEOUT = float(os.getenv("TRAVEL_AGENT_TIMEOUT", "120.0"))
 HOTEL_AGENT_TIMEOUT = float(os.getenv("HOTEL_AGENT_TIMEOUT", "120.0"))
-SUPERVISOR_TIMEOUT = float(os.getenv("SUPERVISOR_TIMEOUT", "300.0"))
 PRIMARY_COLOR = os.getenv("PRIMARY_COLOR", "dark_cyan")
 SECONDARY_COLOR = os.getenv("SECONDARY_COLOR", "sea_green3")
 MCP_MAX_RETRIES = 3

@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import re
@@ -6,7 +7,7 @@ from langchain.messages import ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph.state import CompiledStateGraph
 
-from config import PRIMARY_COLOR, SECONDARY_COLOR
+from config import PRIMARY_COLOR, SECONDARY_COLOR, HOTEL_AGENT_TIMEOUT
 from state import TripPlannerState, HotelOption
 
 logger = logging.getLogger(__name__)
@@ -23,7 +24,10 @@ def make_hotels_node(hotels_agent: CompiledStateGraph):
             status.update(f"[{PRIMARY_COLOR}]Searching for flights and hotels...")
 
         try:
-            response = await hotels_agent.ainvoke({"messages": state["messages"]})
+            response = await asyncio.wait_for(
+                hotels_agent.ainvoke({"messages": state["messages"]}),
+                timeout=HOTEL_AGENT_TIMEOUT
+            )
             tool_messages = [m for m in response["messages"] if isinstance(m, ToolMessage)]
             raw_result = tool_messages[-1].content[0]
             parsed_hotel_options = parse_hotel_options(raw_result)
@@ -48,6 +52,9 @@ def make_hotels_node(hotels_agent: CompiledStateGraph):
             if status:
                 status.console.print(f"[{SECONDARY_COLOR}]✓ Hotels found")
             return {"hotel_options": hotel_options, "retry_attempts": new_retry_attempts}
+        except asyncio.TimeoutError:
+            logger.exception(f"Hotel search timed out after {HOTEL_AGENT_TIMEOUT}s")
+            return {"hotel_options": [], "retry_attempts": new_retry_attempts}
         except Exception:
             logger.exception("Hotel search failed")
             return {"hotel_options": [], "retry_attempts": new_retry_attempts}
