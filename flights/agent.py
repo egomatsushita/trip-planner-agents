@@ -2,9 +2,10 @@ import logging
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain.agents import create_agent
+from langchain.tools import BaseTool
 from langgraph.graph.state import CompiledStateGraph
 
-from agents.state import FlightSearchResponse
+from state import FlightSearchResponse
 from config import OPENAI_MODEL, MCP_MAX_RETRIES, MCP_KIWI_URL
 from middleware.retry import get_tools_with_retry
 from middleware.mcp_middleware import fault_tolerant_mcp_interceptor
@@ -68,10 +69,15 @@ def create_flight_finder_prompt():
     )
 
 
-async def create_travel_agent(kiwi_client: MultiServerMCPClient):
-    """Create the travel agent, fetching flight search tools from the MCP server with retry on failure."""
+async def load_kiwi_tools(kiwi_client: MultiServerMCPClient) -> list[BaseTool]:
+    """Load the Kiwi client tools with retry on failure."""
     tools = await get_tools_with_retry("Kiwi", kiwi_client, MCP_MAX_RETRIES, logger)
+    return tools
 
+
+
+def create_flights_agent(tools: list[BaseTool]):
+    """Create the travel agent."""
     travel_agent: CompiledStateGraph = create_agent(
         model=OPENAI_MODEL,
         tools=tools,

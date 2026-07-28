@@ -2,6 +2,7 @@ import logging
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain.agents import create_agent
+from langchain.tools import BaseTool
 from langgraph.graph.state import CompiledStateGraph
 
 from config import OPENAI_MODEL, MCP_MAX_RETRIES
@@ -39,25 +40,9 @@ def create_hotel_finder_prompt():
         "- Amenities (Wi-Fi, breakfast, cancellation policy)\n"
         "\n"
         "If the MCP tool fails or returns unusable results, retry the tool call once.\n"
-        "RETURN - a JSON array of hotel objects (maximum 5 options) sorted starting from cheapest.\n"
-        "The object should follow the structure below. For example:\n"
-        "{"
-        "    \"label\": \"generate a label based on your findings. e.g.: Cheapest, Best Value, Most Central, etc\","
-        "    \"location\": \"the city, or neighbour. e.g.: 'Nice, France (2.0 km to La Promenade des Anglais)' or 'Amsterdam (Van Gogh Museum area), Amsterdam'\","
-        "    \"check_in\": \"the arrival date\","
-        "    \"check_out\": \"the departure date\","
-        "    \"name\": \"the accommodation_name name\","
-        "    \"currency\": \"the country's currency\","
-        "    \"price_per_night\": \"remove currency and thousand separator, e.g: C$1,234 -> 1234, then convert to float\","
-        "    \"price_per_stay\": \"remove currency and thousand separator, e.g: C$1,234 -> 1234, then convert to float\","
-        "    \"hotel_rating\": \"convert to int\","
-        "    \"review_rating\": \"convert to float\","
-        "    \"review_count\": \"convert to int\","
-        "    \"highlights\": \"the top_amenities, convert to a list of strings\","
-        "    \"accommodation_url\": \"the accommodation url\","
-        "    \"distance\": \"the distance from a place\","
-        "    \"main_image\": \"the main image url\""
-        "}"
+        "RULE — Final response: Once the search tool call succeeds, respond with exactly the word "
+        "'Done'. Do not repeat, reformat, or comment on the tool's output in your response — "
+        "the raw tool result is read directly, your final message is discarded.\n"
         "NOTE - No markdown, no code fences, no commentary\n"
         "\n"
         "RULE — Search calls: Make at most one search call per distinct destination/dates/guests query.\n"
@@ -65,10 +50,15 @@ def create_hotel_finder_prompt():
         "successful call already returned.\n"
     )
 
-async def create_hotel_agent(client: MultiServerMCPClient):
-    """Create the hotel agent, fetching hotel search tools from the MCP server with retry on failure."""
+
+async def load_trivago_tools(client: MultiServerMCPClient) -> list[BaseTool]:
+    """Load the Trivago client tools with retry on failure."""
     tools = await get_tools_with_retry("Trivago", client, MCP_MAX_RETRIES, logger)
-        
+    return tools
+
+
+def create_hotel_agent(tools: list[BaseTool]):
+    """Create the hotel agent."""
     agent: CompiledStateGraph = create_agent(
         model=OPENAI_MODEL,
         tools=tools,
